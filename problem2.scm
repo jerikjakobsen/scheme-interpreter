@@ -9,7 +9,7 @@
 (define second (lambda (p) (car (cdr p))))
 (define third (lambda (p) (car (cdr (cdr p)))))
 
-; Pre condtion: new-entry accepts names and vals
+; Pre condition: new-entry accepts names and vals
 ; where names is a list of names (with no duplicates) and vals is a list of s-expressions of the same length as names
 ; Post condtion: An entry is returned with names associated to its corresponding values
 
@@ -18,7 +18,7 @@
         ( else (cons (cons (car names) (car values)) (new-entry (cdr names) (cdr values))))))
 ;idea
 ;In order to build a list of association pairs from names and values, we can do so inductively,
-;if we (new-entry (cdr names) (cdr values)) then we can use this to build (new-entry names values)
+;if we have (new-entry (cdr names) (cdr values)) then we can use this to build (new-entry names values)
 ;by consing the association pair of the (car names) (car values) to (new-entry (cdr names) (cdr values)).
 ;Our base case will be when names is the empty list, (since by our pre condition names and values must have the same length,
 ;values is also empty) we return the empty list.
@@ -51,9 +51,29 @@
 
                       
 (define lookup-in-entry (lambda (name entry entry-f)
-                               (cond ( (null? entry) (entry-f name))
-                                     ( (eq? (car (car entry)) name) (cdr (car entry)))
-                                     ( else (lookup-in-entry name (cdr entry) entry-f)))))
+                               (cond ( (null-entry? entry) (entry-f name))
+                                     ( (eq? (car-entry-name entry) name) (car-entry-value entry))
+                                     ( else (lookup-in-entry name (cdr-entry entry) entry-f)))))
+
+;Proof that changes made to lookup-in-entry satisfies the specs of the original sub system
+;The original lookup-in-entry accepts the name to be looked for, the entry to be searched through and the
+;function to be run if no match is found. The original preconditions for lookup-in-entry are
+;1) name is a non-numeric atom
+;2) entry is well formed entry
+;
+;What is a well formed entry?
+;
+;A well formed entry is a data structure that supports these operations,
+;1) car-entry-name of the entry should return the name of the first association in the entry
+;2) car-entry-value of the entry should return the value of the first association in the entry
+;3) cdr-entry of the entry should return a list with all associations but the first association
+;4) null-entry? should return #t if the entry is empty and #f if it is not empty
+;5) (new-entry names values) should return an entry with names and values associated to each other
+
+(define car-entry-name (lambda (x) (car (car x))))
+(define car-entry-value (lambda (x) (cdr (car x))))
+(define cdr-entry cdr)
+(define null-entry? null?)
 
 (define extend-table cons)
 
