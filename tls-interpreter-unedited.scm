@@ -173,4 +173,3 @@ entry-f)))
                                                     (new-entry (formals-of closure) vals )
                                                     (table-of closure)))))
 
-(value '((lambda (x) (atom? x)) (quote e)) )
