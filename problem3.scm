@@ -110,6 +110,44 @@
           (apply + (function-name? (car tree)) (map count (cdr tree))))
       (bool-or-number? tree)))
 
-(count '(add1 5))
+(count '(add1 5 9))
 (count '(atom? (sub1 6)))
-; ((sub1 7)
+
+
+
+
+
+
+
+
+
+
+; Extend to functions of specific arity.
+
+
+; Check for function-name - Returns 0 on success, and 1 on failure.
+(define (function-name? ls)
+  (let ((name (car ls)) (arity (- (length ls) 1)))
+    (cond
+      ((and (= arity 2) (eq? name 'cons))  0)
+      ((and (= arity 1) (eq? name 'car)) 0)
+      ((and (= arity 1) (eq? name 'cdr)) 0)
+      ((and (= arity 1) (eq? name 'null?)) 0)
+      ((and (= arity 2) (eq? name 'eq?)) 0)
+      ((and (= arity 1) (eq? name 'atom?)) 0)
+      ((and (= arity 1) (eq? name 'zero?)) 0)
+      ((and (= arity 1) (eq? name 'add1)) 0)
+      ((and (= arity 1) (eq? name 'sub1)) 0)
+      ((and (= arity 1) (eq? name 'number?)) 0)
+      (else 1))))
+
+(define (count tree)
+  (if (pair? tree)
+      (if (eq? (car tree) 'cond)
+          (check-cond tree) ; lol ur function goes here.
+          (apply + (function-name? tree) (map count (cdr tree))))
+      (bool-or-number? tree)))
+
+(count '(add1 5 9))
+(count '(atom? (sub1 6)))
+(count '(eq? 6 test))
