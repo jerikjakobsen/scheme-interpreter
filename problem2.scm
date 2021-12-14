@@ -1,4 +1,36 @@
+(define (make-apair name value) (cons name value))
+(define (aname apair) (car apair))
+(define (aval apair) (cdr apair))
+(define (initial-table formal) (car '()))
+(define (extend-entry apair entry)
+  (cons apair entry))
+(define (extend-table entry table)
+  (cons entry table))
+(define empty-table '())
 
+(define (build-entry names values)
+  (cond ( (null? names) names)
+        ( else (extend-entry (make-apair (car names) (car values)) (build-entry (cdr names) (cdr values))))))
+
+(define (lookup-in-table name table lookup-f)
+  (cond ( (null? table) (lookup-f name))
+        ( else (lookup-in-entry name (car table)
+                               (lambda (name) (lookup-in-table name (cdr table) lookup-f))
+                               ))))
+
+(define (lookup-in-entry name entry lookup-f)
+  (cond ( (null? entry) (lookup-f name))
+        ( (eq? name (aname (car entry))) (aval (car entry)))
+        ( else (lookup-in-entry name (cdr entry) lookup-f))))
+
+(define entry1 (build-entry '(a b c d) '(1 2 3 4)))
+(define entry2 (build-entry '(z x y d) '(6 7 8 2)))
+
+(define table (extend-entry entry2 (extend-entry entry1 empty-table)))
+
+(lookup-in-table 'c table initial-table)
+
+        
 (define (value e)
   (meaning e '() ))
 
@@ -6,7 +38,7 @@
   ( (expression-to-action e) e table))
 
 (define (atom? a)
-  (NOT (OR (list? a) (pair? a))))
+  (AND (Not (pair? a)) (not (null? a))))
 
 (define (expression-to-action e)
   (cond ( (atom? e) (atom-to-action e) )
