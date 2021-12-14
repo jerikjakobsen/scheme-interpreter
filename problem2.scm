@@ -1,131 +1,205 @@
-(define (make-apair name value) (cons name value))
-(define (aname apair) (car apair))
-(define (aval apair) (cdr apair))
-(define (initial-table formal) (car '()))
-(define (extend-entry apair entry)
-  (cons apair entry))
-(define (extend-table entry table)
-  (cons entry table))
-(define empty-table '())
-
-(define (build-entry names values)
-  (cond ( (null? names) names)
-        ( else (extend-entry (make-apair (car names) (car values)) (build-entry (cdr names) (cdr values))))))
-
-(define (lookup-in-table name table lookup-f)
-  (cond ( (null? table) (lookup-f name))
-        ( else (lookup-in-entry name (car table)
-                               (lambda (name) (lookup-in-table name (cdr table) lookup-f))
-                               ))))
-
-(define (lookup-in-entry name entry lookup-f)
-  (cond ( (null? entry) (lookup-f name))
-        ( (eq? name (aname (car entry))) (aval (car entry)))
-        ( else (lookup-in-entry name (cdr entry) lookup-f))))
-
-(define entry1 (build-entry '(a b c d) '(1 2 3 4)))
-(define entry2 (build-entry '(z x y d) '(6 7 8 2)))
-
-(define table (extend-entry entry2 (extend-entry entry1 empty-table)))
-
-(lookup-in-table 'c table initial-table)
-
-        
-(define (value e)
-  (meaning e '() ))
-
-(define (meaning e table)
-  ( (expression-to-action e) e table))
-
 (define (atom? a)
-  (AND (Not (pair? a)) (not (null? a))))
+  (and (not (pair? a)) (not (null? a))))
 
-(define (expression-to-action e)
-  (cond ( (atom? e) (atom-to-action e) )
-        ( else (list-to-action e))))
+(define build (lambda (sl s2)
+                (cond
+                  (else (cons sl (cons s2 (quote ())))))))
 
-(define (atom-to-action e)
-  (cond ( (number? e) *const)
-        ( (eq? e #t) *const)
-        ( (eq? e #f) *const)
-        ( (eq? e 'car) *const)
-        ( (eq? e 'cons) *const)
-        ( (eq? e 'cdr) *const)
-        ( (eq? e 'null?) *const)
-        ( (eq? e 'zero?) *const)
-        ( (eq? e 'add1) *const)
-        ( (eq? e 'sub1) *const)
-        ( else *identifier)))
+(define first (lambda (p) (car p)))
+(define second (lambda (p) (car (cdr p))))
+(define third (lambda (p) (car (cdr (cdr p)))))
+
+; Pre condtion: new-entry accepts names and vals
+; where names is a list of names (with no duplicates) and vals is a list of s-expressions of the same length as names
+; Post condtion: An entry is returned with names associated to its corresponding values
+
+(define (new-entry names values)
+  (cond ( (null? names) names)
+        ( else (cons (cons (car names) (car values)) (new-entry (cdr names) (cdr values))))))
+;idea
+;In order to build a list of association pairs from names and values, we can do so inductively,
+;if we (new-entry (cdr names) (cdr values)) then we can use this to build (new-entry names values)
+;by consing the association pair of the (car names) (car values) to (new-entry (cdr names) (cdr values)).
+;Our base case will be when names is the empty list, (since by our pre condition names and values must have the same length,
+;values is also empty) we return the empty list.
+;
+;Proof via weak induction
+;
+;For this proof we will be inducting on N + V where,
+;N = length of names
+;V = length of values,
+;both N and V are non-negative integers.
+;
+;Induction Hypothesis
+;
+;Let A(N + V) be the property that new-entry works with names of length N and values of length V.
+;Assume A( (N-1) + (V-1) ) holds, that is A(N + V - 2) holds.
+;
+;Base Case
+;
+;A(0) holds, since when both N and V are 0, we return the empty entry (ie the empty list)
+;
+;Induction Step
+;
+;Since by our assumption A( (N-1) + (V-1) ) holds, (new-entry (cdr names) (cdr values)) returns the correct result.
+;We can get (new-entry names values) by consing the association pair of the first element of names with the first element
+;of values to (new-entry (cdr names) (cdr values)). The association pair can be formed with (cons (car names) (car values))
+
+;Termination
+;Since N = V, N + V is of the form 2k, where k is an integer greater than 0. By subtracting 2 from a positive even integer
+;repeatedly we will eventually reach 0, our base case, and terminate.
+
+                      
+(define lookup-in-entry (lambda (name entry entry-f)
+                               (cond ( (null? entry) (entry-f name))
+                                     ( (eq? (car (car entry)) name) (cdr (car entry)))
+                                     ( else (lookup-in-entry name (cdr entry) entry-f)))))
+
+(define extend-table cons)
+
+(define lookup-in-table (lambda (name table table-f)
+                          (cond ( (null? table) (table-f name))
+                                ( else (lookup-in-entry name (car table) (lambda (name) (lookup-in-table name (cdr table) table-f)))))))
+
+(define expression-to-action (lambda (e)
+(cond
+  ( (atom? e) (atom-to-action e))
+  ( else (list-to-action e)))))
+
+(define atom-to-action (lambda (e)
+(cond
+  ((number? e) *const)
+  ((eq? e #t) *const)
+  ((eq? e #f) *const)
+  ((eq? e (quote cons)) *const)
+  ((eq? e (quote car)) *const)
+  ((eq? e (quote cdr)) *const)
+  ((eq? e (quote null?)) *const)
+  ((eq? e (quote eq?)) *const)
+  ((eq? e (quote atom?)) *const)
+  ((eq? e (quote zero?)) *const)
+  ((eq? e (quote add1)) *const)
+  ((eq? e (quote sub1)) *const)
+  ((eq? e (quote number?)) *const)
+  (else *identifier))))
+
+(define list-to-action (lambda (e)
+                         (cond
+                           ((atom? (car e))
+                            (cond ((eq? (car e) (quote quote)) *quote)
+                                  ((eq? (car e) (quote lambda)) *lambda)
+                                  ((eq? (car e) (quote cond)) *cond)
+                                  (else *application)))
+                           (else *application))))
+
+(define value (lambda (e)
+                (meaning e (quote ()))))
+
+(define meaning (lambda (e table)
+                  ((expression-to-action e) e table)))
+
+(define *const (lambda (e table)
+                 (cond
+                   ((number? e) e)
+                   ((eq? e #t) #t)
+                   ((eq? e #f) #f)
+                   (else (build (quote primitive) e)))))
+
+(define *quote (lambda (e table)
+                 (text-of e)))
+
+(define text-of second)
 
 (define *identifier (lambda (e table)
-(lookup-in-table e table initial-table)))
+                      (lookup-in-table e table initial-table)))
 
-  
+(define initial-table (lambda (name)
+                        (car (quote ()))))
 
-(define (list-to-action e)
-  (cond ( (atom? (car e))
-          (cond ( (eq? (car e) 'quote) *quote)
-                ( (eq? (car e) 'lambda) *lambda)
-                ( (eq? (car e) 'cond) *cond)
-                (else *application)
-                ))
-        (else *application)))
+(define *lambda (lambda (e table)
+                  (build (quote non-primitive) (cons table (cdr e)))))
 
-(define (*const e table)
-  (cond ( (number? e) e)
-        ( (eq? e #t) e)
-        ( (eq? e #f) e)
-        ( else (list 'primitive e))))
+(define table-of first)
 
-(define (*lambda e table)
-  (list 'non-primitive (list table (cdr e))))
+(define formals-of second)
 
-(define (*quote e table)
-  (cadr e))
-  
-(define (*cond e table)
-  (apply-cond (cdr e) table))
+(define body-of third)
 
-(define (apply-cond cond-lines table)
-  (cond ( (eq? (car-predicate cond-lines) 'else) (meaning (car (cdr (car cond-lines))) table))
-        ( (meaning (car-predicate cond-lines) table) (meaning (car-answer cond-lines) table))
-        ( else (apply-cond (cdr cond-lines) table))))
-                         
-(define (car-predicate cond-line)
-  (car (car cond-line)))
-(define (car-answer cond-line)
-  (car (cdr (car cond-line))))
+(define evcon
+  (lambda (lines table)
+    (cond
+      ((else? (question-of (car lines))) (meaning (answer-of (car lines))
+                                                  table ) )
+      ((meaning (question-of (car lines))
+                table )
+       (meaning (answer-of (car lines))
+                table))
+      (else (evcon (cdr lines) table)))))
 
-(define (*application e table)
-  (apply-tls (meaning (car e) table)
-         (evlis (cdr e) table)))
+(define else? (lambda (x)
+                (cond
+                  ((atom? x) (eq? x (quote else))) (else #f))))
 
-(define (evlis lst table)
-  (map (lambda (arg) (meaning arg table)) lst))
+(define question-of first)
 
-(define (apply-tls func args)
-  (cond ( (primitive? func) (apply-primitive (cadr func) args))
-        ( (non-primitive? func) (apply-closure (cdr func) args))
-        ))
+(define answer-of second)
 
-(define (primitive? func)
-  (eq? (car func) 'primitive))
+(define *cond (lambda (e table)
+                (evcon (cond-lines-of e) table)))
 
-(define (non-primitive? func)
-  (eq? (car func) 'non-primitive))
+(define cond-lines-of cdr)
 
-(define (apply-primitive name args)
-  (cond ( (eq? name 'car) (car (car args)))
-        ( (eq? name 'cons) (cons (car args) (cadr args)))
-        ( (eq? name 'cdr) (cdr (car args)))
-        ( (eq? name 'null?) (null? (car args)))
-        ( (eq? name 'zero?) (zero? (car args)))
-        ( (eq? name 'add1) (+ 1 (car args)))
-        ( (eq? name 'sub1) (- (car args) 1))))
+(define evlis
+  (lambda (args table)
+    (cond
+      ((null? args) (quote ())) (else
+                                 (cons (meaning (car args) table) (evlis (cdr args) table))))))
 
-(define (apply-closure closure args)
-  (meaning (body-of closure) (add-entry (make-entry (formals-of closure) args) (table-of closure))))
+(define *application (lambda (e table)
+                       (apply-tls
+                         (meaning (function-of e) table) (evlis (arguments-of e) table))))
 
-(define body-of (lambda (e) (car (cdr (cdr e)))))
-(define table-of (lambda (e) (car e)))
-(define formals-of (lambda (e) (car (cdr e))))
+
+(define function-of car)
+
+(define arguments-of cdr)
+
+(define primitive? (lambda (l)
+                     (eq? (first l) (quote primitive))))
+
+(define non-primitive? (lambda (l)
+                         (eq? (first l) (quote non-primitive))))
+
+(define apply-tls (lambda (fun vals)
+                 (cond
+                   ((primitive? fun) ( apply-primitive (second fun) vals))
+                   ((non-primitive? fun) (apply-closure (second fun) vals)))))
+
+(define apply-primitive (lambda (name vals)
+                          (cond
+                            ((eq? name (quote cons)) (cons (first vals) (second vals)))
+                            ((eq? name (quote car)) (car (first vals)))
+                            ((eq? name (quote cdr)) (cdr (first vals)))
+                            ((eq? name (quote null?)) (null? (first vals)))
+                            ((eq? name (quote eq?)) (eq? (first vals) (second vals)))
+                            ((eq? name (quote zero?)) (zero? (first vals)))
+                            ((eq? name (quote add1)) (+ 1 (first vals)))
+                            ((eq? name (quote sub1)) (- (first vals) 1))
+                            ((eq? name (quote atom?)) (atom? (first vals)))
+                            ((eq? name (quote number?)) (number? (first vals))))))
+
+(define :atom? (lambda (x)
+                  (cond ( (atom? x) #t)
+                        ( (null? x) #f)
+                        ( (eq? (car x) (quote primitive)) #t)
+                        ( (eq? (car x) (quote non-primitive)) #t)
+                        (else #f))))
+
+(define apply-closure (lambda (closure vals)
+                        (meaning (body-of closure) (extend-table
+                                                    (new-entry (formals-of closure) vals )
+                                                    (table-of closure)))))
+
+; Tests
+(value '( (lambda (x y) (cons x ((lambda (x) (cons x (quote ()))) y))) 1 2 ) )
+(value '( (lambda (x y) (eq? x ((lambda (x) (add1 x)) y))) 2 1 ) )
