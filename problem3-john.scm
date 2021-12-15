@@ -40,18 +40,19 @@
 ;Check type of expression methods
 
 (define (primitive-function? exp)
-  (cond
-    ((eq? (car exp) 'cons) #t)
-    ((eq? (car exp) 'car) #t)
-    ((eq? (car exp) 'cdr) #t)
-    ((eq? (car exp) 'null?) #t)
-    ((eq? (car exp) 'eq?) #t)
-    ((eq? (car exp) 'atom?) #t)
-    ((eq? (car exp) 'zero?) #t)
-    ((eq? (car exp) 'add1) #t)
-    ((eq? (car exp) 'sub1) #t)
-    ((eq? (car exp) 'number?) #t)
-    (else #f)))
+  (let ((name (car exp)) (arity (- (length exp) 1)))
+    (cond
+      ((and (= arity 2) (eq? name 'cons))  #t)
+      ((and (= arity 1) (eq? name 'car)) #t)
+      ((and (= arity 1) (eq? name 'cdr)) #t)
+      ((and (= arity 1) (eq? name 'null?)) #t)
+      ((and (= arity 2) (eq? name 'eq?)) #t)
+      ((and (= arity 1) (eq? name 'atom?)) #t)
+      ((and (= arity 1) (eq? name 'zero?)) #t)
+      ((and (= arity 1) (eq? name 'add1)) #t)
+      ((and (= arity 1) (eq? name 'sub1)) #t)
+      ((and (= arity 1) (eq? name 'number?)) #t)
+      (else #f))))
 
 (define (non-primitive-function? exp)
   (cond ( (not (list? (car exp))) #f)
@@ -92,6 +93,7 @@
   (cond ( (not (list? (second lambda))) #f)
         ( (not (list? (third lambda))) #f)
         ( else (and (check-formals lambda) (check-body lambda)))))
+
 (define (check-non-primitive-function exp)
   (and (check-lambda (car exp)) (formals-match-arguments exp) (check-function-args (cdr exp))))
 
@@ -106,31 +108,47 @@
 
 (define (check-body lambda)
   (simple-check (third lambda)))
+
 (define (formals-match-arguments exp)
   (equal? (length (second (car exp))) (length (cdr exp))))
+
 (define (check-function-args args)
   (and-map args simple-check))
 
+(define (bool-or-number? name)
+  (cond
+    ((eq? name #t) #t)
+    ((eq? name #f) #t)
+    ((number? name) #t)
+    (else #f)))
+
+(define (check-identifier x) #t)
 
 
 (define (simple-check exp)
-  (cond ( (not (sexp? exp)) #f)
-        ( (atom? exp) #t)
-        ( (> (length exp) 0)
-          (cond ( (primitive-function? exp) (check-function-args (cdr exp)))
-                ( (cond? exp) (check-cond exp))
-                ( (quote? exp) (check-quote exp))
-                ( (non-primitive-function? exp) (check-non-primitive-function exp))
-                (else #f)
-          ))
-        (else #f)))
+  (cond ( (null? exp) #f)
+        ( (not (sexp? exp)) #f)
+        ( (bool-or-number? exp) #t)
+        ( (atom? exp) (check-identifier exp))
+        ( (cond? exp) (check-cond exp))
+        ( (quote? exp) (check-quote exp))
+        ( (non-primitive-function? exp) (check-non-primitive-function exp))
+        ( else (and (primitive-function? exp) (check-function-args (cdr exp))))
+))
+
 
 (define c '(cond ((zero? 1) (add1 1)) ) )
 (define q '(quote (h p)) )
 (define p '(cons (quote a) (quote b)))
 (define np '( (lambda (x y) (cons x y)) 3 (quote a)))
 
-(simple-check c)
-(simple-check q)
-(simple-check p)
-(simple-check np)
+;(simple-check c)
+;(simple-check q)
+;(simple-check p)
+;(simple-check np)
+(simple-check '())
+(simple-check '(add2 7))
+(simple-check '(add1 (sub1 0 0)))
+(simple-check '(eq? (sub1 0 0)))
+(simple-check '( (lambda () (sub1 x))) )
+
