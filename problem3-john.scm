@@ -7,12 +7,35 @@
         ( (list? exp) (and-map exp sexp?))
         (else #f)))
 
-;pre condition: f returns true or false and only accepts one value
-;post-condtion: the logical and of f applied to all elements is returned
-
 (define (and-map lst f)
   (cond ( (null? lst) #t)
         ( else (and (f (car lst)) (and-map (cdr lst) f)))))
+;
+;idea for and-map
+;We can apply f to the car of lst, then logically and the result of that with the (and-map (cdr lst) f). Essentially cdring through the list
+;and anding all the elements with f applied to them.
+;
+;Pre-conditions:
+;1) f accepts one argument
+;2) f returns a boolean
+;3) f terminates
+;4) lst must be a list
+;Post-conditions
+;The logical and of all (f ei), where ei is the ith element in the provided lst, is returned.
+;
+;Proof by weak induction
+;
+;Induction Hypothesis
+;
+;Let A(k) be the property that (and-map lst f) returns the correct result for lst, where lst is of length k. (k is a nonnegative integer)
+;Assume A(k-1) holds.
+;
+;Base Case
+;A(0) in this case there are no elements to apply f to so we can return true.
+;
+;Induction Step
+;Since by our induction hypothesis A(k-1) holds, (and-map (cdr lst) f) works, so we can get (and-map lst f) by anding
+;(and-map (cdr lst) f) with (f (car lst)).
 
 ;Check type of expression methods
 
