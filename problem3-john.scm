@@ -12,6 +12,7 @@
                )
         )
  ))
+
 (define (check-cond exp)
   ( cond ( (< (length exp) 2) #f)
          ( else (cond-check-helper (cdr exp)))))
@@ -33,18 +34,6 @@
   (cond ( (null? lst) #t)
         ( else (and (f (car lst)) (and-map (cdr lst) f)))))
 
-(define (simple-check exp)
-  (cond ( (not (sexp? exp)) #f)
-        ( (atom? exp) #t)
-        ( (> (length exp) 0)
-          (cond ( (primitive-function? exp) (check-function-args (cdr exp)))
-                ( (cond? exp) (check-cond exp))
-                ( (quote? exp) (check-quote exp))
-                ( (non-primitive-function? exp) (check-non-primitive-function exp))
-                (else #f)
-          ))
-        (else #f)))
-
 (define (check-function-args args)
   (and-map args simple-check))
 
@@ -63,7 +52,7 @@
     (else #f)))
 
 (define (cond? exp) (eq? 'cond (car exp)))
-(define (quote? exp) (eq? 'cond (car exp)))
+(define (quote? exp) (eq? 'quote (car exp)))
 (define (lambda? exp) (eq? 'lambda (car exp)))
 
 (define (non-primitive-function? exp)
@@ -76,7 +65,7 @@
         ( (not (list? (third lambda))) #f)
         ( else (and (check-formals lambda) (check-body lambda)))))
 (define (check-non-primitive-function exp)
-  (and (check-lambda (car exp)) (formals-match-arguments exp)))
+  (and (check-lambda (car exp)) (formals-match-arguments exp) (check-function-args (cdr exp))))
 
 (define (second lst) (car (cdr lst)))
 (define (third lst) (car (cdr (cdr lst))))
@@ -88,7 +77,18 @@
   (simple-check (third lambda)))
 (define (formals-match-arguments exp)
   (equal? (length (second (car exp))) (length (cdr exp))))
-  
+
+(define (simple-check exp)
+  (cond ( (not (sexp? exp)) #f)
+        ( (atom? exp) #t)
+        ( (> (length exp) 0)
+          (cond ( (primitive-function? exp) (check-function-args (cdr exp)))
+                ( (cond? exp) (check-cond exp))
+                ( (quote? exp) (check-quote exp))
+                ( (non-primitive-function? exp) (check-non-primitive-function exp))
+                (else #f)
+          ))
+        (else #f)))
 
 (define c '(cond ((zero? 1) (add1 1)) ) )
 (define q '(quote (h p)) )
