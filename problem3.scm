@@ -552,6 +552,8 @@
 ;(simple-check '(cond ((zero? 1) (add1 1)))) ; pass
 ;(simple-check '(cond () ())) ; fail
 
+;(simple-check '(cond ((zero? 4) 5) ((eq? (add1 7) (sub1 10)) #t) (#t #f))) ; pass
+
 
 
 
@@ -570,9 +572,9 @@
     (if (equal? #f result) #f #t)))
 
 
-; CHANGE simple-check TO ACCEPT A TABLE OF IDENTIFIERS
+; CHANGE simple-check TO ACCEPT A TABLE OF IDENTIFIERS.
 (define (check-function-args args table)
-  (and-map args (lambda (x) (simple-check x table))))
+  (and-map args (lambda (x) (simple-check x table)))) ; USE A LAMBDA TO BIND ARGUMENTS.
 
 (define (check-cond exp table)
   ( cond ( (< (length exp) 2) #f)
@@ -635,77 +637,124 @@
 
 
 
-
-
+; #5 - Add lambda.
 
 (define (lambda? exp) (eq? 'lambda (car exp)))
 
+; non-primitive-function? - Checks for lambda format and returns a boolean.
 (define (non-primitive-function? exp)
   (cond ( (not (list? (car exp))) #f)
         ( (not (equal? 3 (length (car exp)))) #f)
         ( else (lambda? (car exp)))))
 
-(define (check-formals lambda)
-  (check-formals-helper (second lambda)))
+; safe-length - Returns 1 for atoms, sizes lists.
+(define (safe-length s) (if (atom? s) 1 (length s)))
 
-(define (check-body lambda)
-  (simple-check (third lambda)))
+; check-formals - Use an and-map to ensure the formals are atoms and not numbers.
+(define (check-formals formals)
+  (let ((atom-or-number? (lambda (x) (and (atom? x) (not (number? x))))))
+  (if (atom? formals)
+      (atom-or-number? formals)
+      (and-map formals atom-or-number?))))
 
-(define (check-lambda lambda)
-  (cond ( (not (list? (second lambda))) #f)
-        ( (not (list? (third lambda))) #f)
-        ( else (and (check-formals lambda) (check-body lambda)))))
-
-(define (check-non-primitive-function exp)
-  (and (check-lambda (car exp)) (formals-match-arguments exp) (check-function-args (cdr exp))))
-
-
-
-(define (check-formals-helper formals)
-  (and-map formals (lambda (x) (and (atom? x) (not (number? x))))))
-
-
-
+; formals-match-arguments - Checks if the # of lambda arguments matches the # of applied arguments.
 (define (formals-match-arguments exp)
-  (equal? (length (second (car exp))) (length (cdr exp))))
+  (equal? (safe-length (second (car exp))) (safe-length (cdr exp))))
+
+; add-formals-to-table - Extends a table with the formals.
+(define (add-formals-to-table formals table)
+  (extend-table (formals-entries formals) table))
+
+; formals-entries - Creates an entry of from the formals of the lambda form.
+; Note that a dummy value of #t is used. The main purpose of the syntax checker is to check syntax,
+; not to evaluate. Therefore a dummy value is sufficient for this purpose.
+(define (formals-entries formals)
+  (new-entry formals (generate-list #t (safe-length formals))))
+
+; generate-list - Takes an element and a size, and returns a list of length size.
+; recursive function. termination: when size is equal to 0.
+; strong-enough? when size is 0 the null list is returned.
+; preserves? Cons the null list builds up a list.
+; weak-enough? size is decremented until 0.
+(define (generate-list element size)
+  (if (> size 0)
+      (cons element (generate-list element (- size 1)))
+      '()))
 
 
 
+; check-non-primitive-function - Returns true if this is a proper lambda.
+(define (check-non-primitive-function exp table)
+  (let ((lambda (car exp))
+        (formals (second (car exp)))
+        (body (third (car exp))))
+    (and
+     (check-formals formals)
+     (simple-check body (add-formals-to-table formals table))
+     (formals-match-arguments exp)
+     )))
 
-
-(define (check-identifier x) #t)
-
-
-(define (simple-check exp)
-  (cond ( (null? exp) #f)
-        ;( (not (sexp? exp)) #f)
-        ( (bool-or-number? exp) #t)
-        ( (atom? exp) (check-identifier exp))
-        ( (cond? exp) (check-cond exp))
-        ( (quote? exp) (check-quote exp))
-        ( (non-primitive-function? exp) (check-non-primitive-function exp))
-        ( else (and (primitive-function? exp) (check-function-args (cdr exp))))
-))
 
 
 
 
 ; TESTS
+;(define q '((lambda x 5) 2))
+;(define q '((lambda () (sub1 3))))
+;(define q '((lambda (x) (sub1 x)) 2))
 
-; pass
+;(value q)
+;(car q)                                     ; lambda
+;(second (car q))                            ; formals
+;(third (car q))                             ; body
+;(add-formals-to-table (second (car q)) '()) ; new environment
+;(check-formals (second (car q)))
+;(simple-check (third (car q))
+;              (add-formals-to-table (second (car q)) '()))
+;(formals-match-arguments q)
+;(check-non-primitive-function q '())
 
-;(simple-check '((lambda (x y) (cons x y)) 3 (quote a)) )
-;(simple-check '((lambda () (sub1 x))))
+
+; Note that this properly checks for closures!!!
+; Here the value z is not in the formals.
+;(define q '((lambda (x) (sub1 z)) 2))
+;(check-non-primitive-function q '())
+
+; ofc if z is defined...
+;(define q '((lambda (z) (sub1 z)) 2))
+;(check-non-primitive-function q '())
+
+
+;;;;;;;;;;;;;;;;;;;
+;; FINAL VERSION ;;
+;;;;;;;;;;;;;;;;;;;
+(define (simple-check exp table)
+  (cond ( (null? exp) #f)
+        ( (bool-or-number? exp) #t)
+        ( (atom? exp) (check-identifier exp table))
+        ( (quote? exp) (check-quote exp))
+        ( (cond? exp) (check-cond exp table))
+        ( (non-primitive-function? exp) (check-non-primitive-function exp table))
+        ( else (and (primitive-function? exp) (check-function-args (cdr exp) table)))))
+
+
+
+(define (check exp) (simple-check exp '()))
+
+
+; TESTS
+;(check '((lambda x 10) 5))
+;(check '((lambda (x) (add1 x)) 5))
+;(check '((lambda (x y) (cons x y)) 3 (quote a)))
+;(check '((lambda (z) ((lambda (x y) (cons x y)) 3 (quote a))) (quote 15)))
 
 ; fail
-;(simple-check '())                ; null is not an expression.
-;(simple-check '(add2 7))          ; add2 is not a function.
-;(simple-check '(add1 (sub1 0 0))) ; sub1 is arity-1.
-;(simple-check '(eq? (sub1 0)))    ; eq? is arity-2.
+;(check '())                ; null is not an expression.
+;(check '(add2 7))          ; add2 is not a function.
+;(check '(add1 (sub1 0 0))) ; sub1 is arity-1.
+;(check '(eq? (sub1 0)))    ; eq? is arity-2.
 
-;(simple-check '((lambda (x) (add1 x)) 5) )
 
-;(simple-check '(cond ((zero? 4) 5) ((eq? (add1 7) (sub1 10)) #t) (else #t)))
 
 
 
