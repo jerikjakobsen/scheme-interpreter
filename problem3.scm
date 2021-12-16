@@ -690,8 +690,8 @@
         (body (third (car exp))))
     (and
      (check-formals formals)
-     (simple-check body (add-formals-to-table formals table))
      (formals-match-arguments exp)
+     (simple-check body (add-formals-to-table formals table)) ; This line adds the lambda variables to the table.
      )))
 
 
