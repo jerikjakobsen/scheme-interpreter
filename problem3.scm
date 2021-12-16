@@ -1,46 +1,378 @@
-(define (atom? a)
-  (and (not (pair? a)) (not (null? a))))
+; CSc 335
+; first scheme interpreter
 
-(define (sexp? exp)
-  (cond ( (atom? exp) #t)
-        ( (null? exp) #t)
-        ( (list? exp) (and-map exp sexp?))
-        (else #f)))
 
-(define (and-map lst f)
-  (cond ( (null? lst) #t)
-        ( else (and (f (car lst)) (and-map (cdr lst) f)))))
-;
-;idea for and-map
-;We can apply f to the car of lst, then logically and the result of that with the (and-map (cdr lst) f). Essentially cdring through the list
-;and anding all the elements with f applied to them.
-;
-;Pre-conditions:
-;1) f accepts one argument
-;2) f returns a boolean
-;3) f terminates
-;4) lst must be a list
-;Post-conditions
-;The logical and of all (f ei), where ei is the ith element in the provided lst, is returned.
-;
-;Proof by weak induction
-;
-;Induction Hypothesis
-;
-;Let A(k) be the property that (and-map lst f) returns the correct result for lst, where lst is of length k. (k is a nonnegative integer)
-;Assume A(k-1) holds.
-;
-;Base Case
-;A(0) in this case there are no elements to apply f to so we can return true.
-;
-;Induction Step
-;Since by our induction hypothesis A(k-1) holds, (and-map (cdr lst) f) works, so we can get (and-map lst f) by anding
-;(and-map (cdr lst) f) with (f (car lst)).
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;Check type of expression methods
+; tls-scheme, from chapter 10 of tls
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; need to allow redefinition of initial bindings in r5rs as delivered
+; by drracket
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+; auxiliary functions
+
+(define build
+  (lambda (s1 s2)
+    (cons s1 (cons s2 (quote ())))))
+
+(define first car)
+
+(define second cadr)
+
+(define third caddr)
+
+(define atom?
+  (lambda (x)
+    (and (not (pair? x)) (not (null? x)))))
+
+
+
+; environments implemented as tables
+
+
+(define lookup-in-table
+  (lambda (name table table-f)
+    (cond
+      ((null? table) (table-f name))
+      (else (lookup-in-entry name
+                             (car table)
+                             (lambda (name)
+                               (lookup-in-table name
+                                                (cdr table)
+                                                table-f)))))))
+
+(define extend-table cons)
+
+
+
+(define lookup-in-entry
+  (lambda (name entry entry-f)
+    (lookup-in-entry-help name
+                          (names entry)
+                          (vals entry)
+                          entry-f)))
+
+
+
+(define lookup-in-entry-help
+  (lambda (name names vals entry-f)
+    (cond
+      ((null? names) (entry-f name))
+      ((eq? (car names) name) (car vals))
+      (else (lookup-in-entry-help name
+                                  (cdr names)
+                                  (cdr vals)
+                                  entry-f)))))
+
+
+
+
+(define new-entry build)
+
+(define names
+  (lambda (entry) (car entry)))
+
+(define vals
+  (lambda (entry) (cadr entry)))
+
+
+
+
+; the top level of the interpreter
+
+(define value
+  (lambda (e)
+    (meaning e (quote () ))))
+
+
+(define meaning
+  (lambda (e table)
+    ((expression-to-action e) e table)))
+
+
+; supporting functions for the intepeter
+
+; syntax-directed dispatch on expression
+
+(define expression-to-action
+  (lambda (e)
+    (cond
+      ((atom? e) (atom-to-action e))
+      (else (list-to-action e)))))
+
+(define atom-to-action
+  (lambda (e)
+    (cond
+      ((number? e) *const)
+      ((eq? e #t) *const)
+      ((eq? e #f) *const)
+      ((eq? e (quote cons)) *const)
+      ((eq? e (quote car)) *const)
+      ((eq? e (quote cdr)) *const)
+      ((eq? e (quote null?)) *const)
+      ((eq? e (quote eq?)) *const)
+      ((eq? e (quote atom?)) *const)
+      ((eq? e (quote zero?)) *const)
+      ((eq? e (quote add1)) *const)
+      ((eq? e (quote mul)) *const)
+      ((eq? e (quote sub1)) *const)
+      ((eq? e (quote number?)) *const)
+      (else *identifier))))
+
+
+(define list-to-action
+  (lambda (e)
+    (cond
+      ((atom? (car e))
+       (cond
+         ((eq? (car e) (quote quote))
+          *quote)
+         ((eq? (car e) (quote lambda))
+          *lambda)
+         ((eq? (car e) (quote cond))
+          *cond)
+         (else *application)))
+      (else *application))))
+
+
+; operational semantics -- the definitions of the action functions
+
+(define *const
+  (lambda (e table)
+    (cond
+      ((number? e) e)
+      ((eq? e #t) #t)
+      ((eq? e #f) #f)
+      (else (build (quote primitive) e)))))
+
+
+(define *quote
+  (lambda (e table)
+    (text-of e)))
+
+(define text-of second)
+
+
+
+
+(define *identifier
+  (lambda (e table)
+    (lookup-in-table e table initial-table)))
+
+
+; note that as (car (quote ())) throws an error, this definition
+; amounts to saying that looking anything up in the initial table
+; is impossible.
+(define initial-table
+  (lambda (name)
+    (car (quote ()))))
+
+
+(define *lambda
+  (lambda (e table)
+    (build (quote non-primitive)
+           (cons table (cdr e)))))
+
+(define table-of first)
+
+(define formals-of second)
+
+(define body-of third)
+
+
+; cond is a special form that takes any number of
+; cond-lines ...  if it sees an else-line, it treats
+; that cond-line as if its question part were true.
+
+(define evcon
+  (lambda (lines table)
+    (cond
+      ((else? (question-of (car lines)))
+       (meaning (answer-of (car lines))
+                table))
+      ((meaning (question-of (car lines))
+                table)
+       (meaning (answer-of (car lines))
+                table))
+      (else (evcon (cdr lines) table)))))
+
+
+(define else?
+  (lambda (x)
+    (cond
+      ((atom? x) (eq? x (quote else)))
+      (else #f))))
+
+(define question-of first)
+
+(define answer-of second)
+
+
+
+(define *cond
+  (lambda (e table)
+    (evcon (cond-lines-of e) table)))
+
+(define cond-lines-of cdr)
+
+
+
+(define evlis
+  (lambda (args table)
+    (cond
+      ((null? args) (quote ()))
+      (else
+       (cons (meaning (car args) table)
+             (evlis (cdr args) table))))))
+
+
+
+(define *application
+  (lambda (e table)
+    (myapply
+     (meaning (function-of e) table)
+     (evlis (arguments-of e) table))))
+
+(define function-of car)
+
+(define arguments-of cdr)
+
+
+
+
+(define primitive?
+  (lambda (l)
+    (eq? (first l) (quote primitive))))
+
+(define non-primitive?
+  (lambda (l)
+    (eq? (first l) (quote non-primitive))))
+
+
+
+(define myapply
+  (lambda (fun vals)
+    (cond
+      ((primitive? fun)
+       (myapply-primitive
+        (second fun) vals))
+      ((non-primitive? fun)
+       (myapply-closure
+        (second fun) vals)))))
+
+
+(define myapply-primitive
+  (lambda (name vals)
+    (cond
+      ((eq? name (quote cons))
+       (cons (first vals) (second vals)))
+      ((eq? name (quote car))
+       (car (first vals)))
+      ((eq? name (quote cdr))
+       (cdr (first vals)))
+      ((eq? name (quote null?))
+       (null? (first vals)))
+      ((eq? name (quote eq?))
+       (eq? (first vals) (second vals)))
+      ((eq? name (quote atom?))
+       (:atom? (first vals)))
+      ((eq? name (quote zero?))
+       (zero? (first vals)))
+      ((eq? name (quote add1))
+       ((lambda (x) (+ x 1)) (first vals)))
+      ((eq? name (quote mul))
+       (* (first vals) (second vals)))
+      ((eq? name (quote sub1))
+       (- (first vals) 1))
+      ((eq? name (quote number?))
+       (number? (first vals))))))
+
+
+(define :atom?
+  (lambda (x)
+    (cond
+      ((atom? x) #t)
+      ((null? x) #f)
+      ((eq? (car x) (quote primitive))
+       #t)
+      ((eq? (car x) (quote non-primitive))
+       #t)
+      (else #f))))
+
+(define myapply-closure
+  (lambda (closure vals)
+    (meaning (body-of closure)
+             (extend-table
+              (new-entry
+               (formals-of closure)
+               vals)
+              (table-of closure)))))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+; Solution to Problem 3. By Edison Hua and John Jakobsen.
+
+; We propose the following simple solution:
+; A list of function-names that is defined by the TLS checker.
+; A TLS-expression consisiting of booleans, numbers, and expressions.
+
+; Inductive Types
+; function-name = cons | car | cdr | null? | eq? | atom? | zero? | add1 | mul | sub1 | number?
+; tls-expression = #t | #f | number | (function-name tls-expression ... tls-expression)
+
+
+; #t | #f | number
+
+; bool-or-number? - Takes an atom and checks if it is a boolean or a number. Returns a boolean.
+(define (bool-or-number? name)
+  (cond
+    ((eq? name #t) #t)
+    ((eq? name #f) #t)
+    ((number? name) #t)
+    (else #f)))
+
+
+; (function-name tls-expression ... tls-expression)
+
+; primitive-function? - Takes an expression and checks the function-name and arity. Returns a boolean.
 (define (primitive-function? exp)
-  (let ((name (car exp)) (arity (- (length exp) 1)))
+  (let ((name (car exp)) (arity (length (cdr exp))))
     (cond
       ((and (= arity 2) (eq? name 'cons))  #t)
       ((and (= arity 1) (eq? name 'car)) #t)
@@ -54,19 +386,149 @@
       ((and (= arity 1) (eq? name 'number?)) #t)
       (else #f))))
 
-(define (non-primitive-function? exp)
-  (cond ( (not (list? (car exp))) #f)
-        ( (not (equal? 3 (length (car exp)))) #f)
-        ( else (lambda? (car exp)))))
 
-(define (cond? exp) (eq? 'cond (car exp)))
+
+; idea for and-map
+; We can apply f to the car of lst, then logically and the result of that with the (and-map (cdr lst) f). Essentially cdring through the list
+; and anding all the elements with f applied to them.
+
+; Pre-conditions:
+; 1) f accepts one argument
+; 2) f returns a boolean
+; 3) f terminates
+; 4) lst must be a list
+; Post-conditions
+; The logical and of all (f ei), where ei is the ith element in the provided lst, is returned.
+;
+; Proof by weak induction
+;
+; Induction Hypothesis
+;
+; Let A(k) be the property that (and-map lst f) returns the correct result for lst, where lst is of length k. (k is a nonnegative integer)
+; Assume A(k-1) holds.
+;
+; Base Case
+; A(0) in this case there are no elements to apply f to so we can return true.
+;
+; Induction Step
+; Since by our induction hypothesis A(k-1) holds, (and-map (cdr lst) f) works, so we can get (and-map lst f) by anding
+; (and-map (cdr lst) f) with (f (car lst)).
+
+(define (and-map lst f)
+  (cond ((null? lst) #t)
+        (else (and (f (car lst)) (and-map (cdr lst) f)))))
+
+
+
+; check-function-args - Takes a list and returns a boolean.
+; Note that this function is meant to be called using the cdr of a list, as this checks function arguments.
+; Simple-check is applied to each argument using and-map.
+(define (check-function-args args)
+  (and-map args simple-check))
+
+
+; #1 - Sketch of simple-check
+; pre-condition: accepts an expression.
+; post-condition: returns a boolean.
+
+; This is a recursive function that will apply check-function-args/and-map to lists.
+; atom -> bool-or-number?
+; null -> false
+; list -> primitive-function? -> check-function-args
+; Terminates when it fails one of the checks, or all atoms have been verified to be bool-or-number.
+; Preserves passing the remainder of the list to check-function-args.
+; If any nested arguments exist, and-map applies simple-check to each of them.
+; weak-enough to allow nested lists to pass, and strong enough to filter out atoms.
+; Each element of the expression is evaluated to either #t or #f by simple-check,
+; and the and-map will "and" all lists of booleans to produce either a true or false.
+; Every nested list becomes a boolean, so the final result describes whether the entire statement is syntactically correct.
+(define (simple-check exp)
+  (cond ( (null? exp) #f)
+        ( (bool-or-number? exp) #t)
+        ( else (and (primitive-function? exp) (check-function-args (cdr exp))))))
+
+; TESTS
+;(simple-check '())                      ; fail
+;(simple-check '35465465)                ; pass
+;(simple-check '(add1 4))                ; pass
+;(simple-check '(add1 (sub1 7)))         ; pass
+;(simple-check '(eq? (sub1 7) (add1 5))) ; pass
+
+
+
+
+
+
+
+
+
+; #2 - Add quote
 
 (define (quote? exp) (eq? 'quote (car exp)))
 
-(define (lambda? exp) (eq? 'lambda (car exp)))
+; sexp? - checks if the expression is a valid symbolic expression.
+; The termination condition is when it reaches an an atom? null? or pair?.
+; The first call always works because of the else clause.
+; and-map is used to recursively apply sexp? to every element of a nested list.
+; This action preserves the booleans, as and-map will and every bool, and return a unnested boolean.
+; Therefore, every nested list will be reduced to a top level boolean.
+; Therefore, sexp? is strong enough to return a result of either #t or #f.
+; Moreover, sexp? is weak enough to pass nested lists to sexp? again.
+(define (sexp? exp)
+  (cond ( (atom? exp) #t)
+        ( (null? exp) #t)
+        ( (list? exp) (and-map exp sexp?))
+        (else #f)))
 
-;Check cond methods
+; check-quote - Takes an expression with the first element being quote, and returns a boolean.
+; Ensures that quote is arity-1.
+; Verifies that the argument is an symbolic expression.
+(define (check-quote exp)
+  (cond ( (not (equal? (length exp) 2) ) #f)
+        ( else (sexp? (car (cdr exp))))))
 
+
+(define (simple-check exp)
+  (cond ( (null? exp) #f)
+        ( (bool-or-number? exp) #t)
+        ( (quote? exp) (check-quote exp))
+        ( else (and (primitive-function? exp) (check-function-args (cdr exp))))))
+
+; TESTS
+;(simple-check '(quote (h p)))              ; pass
+;(simple-check '(quote ()))                 ; pass
+;(simple-check '(cons (quote a) (quote b))) ; pass
+
+
+
+
+
+
+
+
+
+; #3 - Add cond
+(define (cond? exp) (eq? 'cond (car exp)))
+
+
+; check-cond - Takes an expression that begins with cond and returns a boolean.
+; verifies that arity is greater than 1.
+(define (check-cond exp)
+  ( cond ( (< (length exp) 2) #f)
+         ( else (cond-check-helper (cdr exp)))))
+
+; cond-check-helper - Takes a list and returns a boolean.
+; idea: A cond statement has multiple cells. Every cond cell has two arguments.
+; check if the car of the list is a list. Make sure its length is 2.
+
+; Recursively cdr down the list. This is a weak induction over the length of the list.
+; base case is the first cond cell.
+; termination argument - null list. Returns true.
+; Results are preserved using and.
+; strong-enough? list is truncated via cdr.
+; weak-enough? returns #t when null, so the value of and will not change.
+
+; Call simple-check on the two elements of the cond cell to verify those as well.
 (define (cond-check-helper lst)
   (cond ( (null? lst) #t)
         ( (not (list? (car lst))) #f)
@@ -79,15 +541,115 @@
         )
  ))
 
-(define (check-cond exp)
+(define (simple-check exp)
+  (cond ( (null? exp) #f)
+        ( (bool-or-number? exp) #t)
+        ( (quote? exp) (check-quote exp))
+        ( (cond? exp) (check-cond exp))
+        ( else (and (primitive-function? exp) (check-function-args (cdr exp))))))
+
+; TESTS
+;(simple-check '(cond ((zero? 1) (add1 1)))) ; pass
+;(simple-check '(cond () ())) ; fail
+
+
+
+
+
+
+
+; #4 - Add identifiers.
+
+; Idea: Create a falsey function and pass that to lookup-in-table.
+; Then if the returned result is not false, return true.
+
+; check-identifier - Takes a name and a table, and returns a boolean.
+(define (check-identifier name table)
+  (let ((result (lookup-in-table name table
+                   (lambda (name) #f))))
+    (if (equal? #f result) #f #t)))
+
+
+; CHANGE simple-check TO ACCEPT A TABLE OF IDENTIFIERS
+(define (check-function-args args table)
+  (and-map args (lambda (x) (simple-check x table))))
+
+(define (check-cond exp table)
   ( cond ( (< (length exp) 2) #f)
-         ( else (cond-check-helper (cdr exp)))))
+         ( else (cond-check-helper (cdr exp) table))))
 
-(define (check-quote exp)
-  (cond ( (not (equal? (length exp) 2) ) #f)
-        ( else (sexp? (car (cdr exp))))))
+(define (cond-check-helper lst table)
+  (cond ( (null? lst) #t)
+        ( (not (list? (car lst))) #f)
+        ( (not (equal? 2 (length (car lst)))) #f)
+        ( else (and
+                (simple-check (car (car lst)) table)
+                (simple-check (car (cdr (car lst))) table)
+                (cond-check-helper (cdr lst) table)
+               )
+        )
+ ))
 
-;Check non-primitive function methods
+
+(define (simple-check exp table)
+  (cond ( (null? exp) #f)
+        ( (bool-or-number? exp) #t)
+        ( (atom? exp) (check-identifier exp table))
+        ( (quote? exp) (check-quote exp))
+        ( (cond? exp) (check-cond exp table))
+        ( else (and (primitive-function? exp) (check-function-args (cdr exp) table)))))
+
+
+; TESTS
+
+(define table-test
+  (extend-table (new-entry '(appetizer entree beverage) '(pate boeuf vin))
+   (extend-table (new-entry '(beverage dessert) '((food is) (number one with us)))
+                 '())))
+
+;(meaning 'appetizer table-test)
+;(check-identifier 'appetizer table-test)
+;(check-identifier 'no table-test)
+
+;(simple-check '(add1 appetizer) table-test)                   ; pass
+;(simple-check '(add1 sushi) table-test)                       ; fail
+;(simple-check '(cond ((zero? 1) (add1 beverage))) table-test) ; pass
+;(simple-check '(cond () ()) table-test)                       ; fail
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(define (lambda? exp) (eq? 'lambda (car exp)))
+
+(define (non-primitive-function? exp)
+  (cond ( (not (list? (car exp))) #f)
+        ( (not (equal? 3 (length (car exp)))) #f)
+        ( else (lambda? (car exp)))))
+
+(define (check-formals lambda)
+  (check-formals-helper (second lambda)))
+
+(define (check-body lambda)
+  (simple-check (third lambda)))
 
 (define (check-lambda lambda)
   (cond ( (not (list? (second lambda))) #f)
@@ -97,37 +659,26 @@
 (define (check-non-primitive-function exp)
   (and (check-lambda (car exp)) (formals-match-arguments exp) (check-function-args (cdr exp))))
 
-(define (second lst) (car (cdr lst)))
-(define (third lst) (car (cdr (cdr lst))))
 
-(define (check-formals lambda)
-  (check-formals-helper (second lambda)))
 
 (define (check-formals-helper formals)
   (and-map formals (lambda (x) (and (atom? x) (not (number? x))))))
 
-(define (check-body lambda)
-  (simple-check (third lambda)))
+
 
 (define (formals-match-arguments exp)
   (equal? (length (second (car exp))) (length (cdr exp))))
 
-(define (check-function-args args)
-  (and-map args simple-check))
 
-(define (bool-or-number? name)
-  (cond
-    ((eq? name #t) #t)
-    ((eq? name #f) #t)
-    ((number? name) #t)
-    (else #f)))
+
+
 
 (define (check-identifier x) #t)
 
 
 (define (simple-check exp)
   (cond ( (null? exp) #f)
-        ( (not (sexp? exp)) #f)
+        ;( (not (sexp? exp)) #f)
         ( (bool-or-number? exp) #t)
         ( (atom? exp) (check-identifier exp))
         ( (cond? exp) (check-cond exp))
@@ -137,18 +688,24 @@
 ))
 
 
-(define c '(cond ((zero? 1) (add1 1)) ) )
-(define q '(quote (h p)) )
-(define p '(cons (quote a) (quote b)))
-(define np '( (lambda (x y) (cons x y)) 3 (quote a)))
 
-;(simple-check c)
-;(simple-check q)
-;(simple-check p)
-;(simple-check np)
-(simple-check '())
-(simple-check '(add2 7))
-(simple-check '(add1 (sub1 0 0)))
-(simple-check '(eq? (sub1 0 0)))
-(simple-check '( (lambda () (sub1 x))) )
+
+; TESTS
+
+; pass
+
+;(simple-check '((lambda (x y) (cons x y)) 3 (quote a)) )
+;(simple-check '((lambda () (sub1 x))))
+
+; fail
+;(simple-check '())                ; null is not an expression.
+;(simple-check '(add2 7))          ; add2 is not a function.
+;(simple-check '(add1 (sub1 0 0))) ; sub1 is arity-1.
+;(simple-check '(eq? (sub1 0)))    ; eq? is arity-2.
+
+;(simple-check '((lambda (x) (add1 x)) 5) )
+
+;(simple-check '(cond ((zero? 4) 5) ((eq? (add1 7) (sub1 10)) #t) (else #t)))
+
+
 
