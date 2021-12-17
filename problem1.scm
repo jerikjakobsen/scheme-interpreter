@@ -319,6 +319,12 @@
 
 
 
+; Two functions are modified - atom-to-action and myapply-primitive.
+; my-apply primitive receives the name of the atom from a primitive of the form ('primitive 'square).
+; This is a structural induction on the type of the list, which is a defined to be a primitive.
+
+; The construction of ('primitive 'square) comes from atom-to-action. It returns the first class function *const,
+; and *const is applied to (square vals).
 
 
 ; TESTS
