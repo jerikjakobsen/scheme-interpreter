@@ -826,3 +826,15 @@
 
 
 
+
+; We found a bug in the tls-interpreter.
+
+;(value '((lambda x x) 2) )
+; Passing a lambda with no parenthesis around the parameters i.e (lambda x 5) creates a corrupted table.
+; We have fixed our syntax checker to not create these errors by checking if the formal is an atom, instead of assuming it is a list.
+(check '((lambda x x) 2) )
+
+
+
+
+
