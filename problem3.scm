@@ -537,9 +537,9 @@
                 (simple-check (car (car lst)))
                 (simple-check (car (cdr (car lst))))
                 (cond-check-helper (cdr lst))
+                )
                )
-        )
- ))
+        ))
 
 (define (simple-check exp)
   (cond ( (null? exp) #f)
@@ -568,7 +568,7 @@
 ; check-identifier - Takes a name and a table, and returns a boolean.
 (define (check-identifier name table)
   (let ((result (lookup-in-table name table
-                   (lambda (name) #f))))
+                                 (lambda (name) #f))))
     (if (equal? #f result) #f #t)))
 
 
@@ -588,9 +588,9 @@
                 (simple-check (car (car lst)) table)
                 (simple-check (car (cdr (car lst))) table)
                 (cond-check-helper (cdr lst) table)
+                )
                )
-        )
- ))
+        ))
 
 
 (define (simple-check exp table)
@@ -606,8 +606,8 @@
 
 (define table-test
   (extend-table (new-entry '(appetizer entree beverage) '(pate boeuf vin))
-   (extend-table (new-entry '(beverage dessert) '((food is) (number one with us)))
-                 '())))
+                (extend-table (new-entry '(beverage dessert) '((food is) (number one with us)))
+                              '())))
 
 ;(meaning 'appetizer table-test)
 ;(check-identifier 'appetizer table-test)
@@ -638,6 +638,13 @@
 
 
 ; #5 - Add lambda.
+; idea: to verify the correctness, check for the length of a lambda expression = 3.
+; Match the number of formal arguments to number of applied arguments.
+; Add the formals to the environment, and pass the new-table to simple-check.
+
+; Because a lambda can also be of the form ((lambda x 5) 7)
+; We must accept atoms as well as lists.
+
 
 (define (lambda? exp) (eq? 'lambda (car exp)))
 
@@ -653,9 +660,9 @@
 ; check-formals - Use an and-map to ensure the formals are atoms and not numbers.
 (define (check-formals formals)
   (let ((atom-or-number? (lambda (x) (and (atom? x) (not (number? x))))))
-  (if (atom? formals)
-      (atom-or-number? formals)
-      (and-map formals atom-or-number?))))
+    (if (atom? formals)
+        (atom-or-number? formals)
+        (and-map formals atom-or-number?))))
 
 ; formals-match-arguments - Checks if the # of lambda arguments matches the # of applied arguments.
 (define (formals-match-arguments exp)
@@ -743,6 +750,7 @@
 
 
 ; TESTS
+; pass
 ;(check '((lambda x 10) 5))
 ;(check '((lambda (x) (add1 x)) 5))
 ;(check '((lambda (x y) (cons x y)) 3 (quote a)))
