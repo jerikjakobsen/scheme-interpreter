@@ -140,6 +140,7 @@
           *lambda)
          ((eq? (car e) (quote cond))
           *cond)
+         ( (eq? (car e) (quote let)) *let) ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;;
          (else *application)))
       (else *application))))
 
@@ -318,4 +319,12 @@
                (formals-of closure)
                vals)
               (table-of closure)))))
+
+(define (*let e table)
+  (myapply
+
+
+ (let ( (x 5) ) (+ 1 x))
+
+
 
