@@ -292,9 +292,7 @@
       ((eq? name (quote mul))
        (* (first vals) (second vals)))
       ((eq? name (quote sub1))
-       (sub1 (first vals)))
-;;;; deliberate error: ask class to figure out how to repair it.  
-      
+       (- (first vals) 1))
       ((eq? name (quote number?))
        (number? (first vals))))))
 
