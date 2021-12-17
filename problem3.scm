@@ -541,12 +541,7 @@
         )
  ))
 
-;Structural Induction For Checking cond
-;
-;Assume the simple-check works for the sub-components of cond, that is the question and answer parts of the cond cell works with simple-check.
-;Base case: there are no cond cells, so we return false since cond requires at least one cond cell.
-;Induction step: Assuming simple-check works for the cond cells, all we must do is verify the structure of the cond statement.
-
+; Structural Induction For Checking cond
 
 (define (simple-check exp)
   (cond ( (null? exp) #f)
@@ -598,7 +593,6 @@
   (cond ( (null? entry-names) #f)
         ( (eq? (car entry-names) name) #t)
         ( else (check-entry (cdr entry-names) name))))
-
 ;The proof is similar to above, instead of cdring down the table, we are cdring down the names of the entry and returning true
 ;if the car of the names of the entry is equal to the provided name, and false if the entry is null.
 
@@ -680,19 +674,11 @@
 ; Because a lambda can also be of the form ((lambda x 5) 7)
 ; We must accept atoms as well as lists.
 
-;Structural Induction For checking lambda
-;
-;Assume the simple-check works for the sub-components of lambda, that is the body and arguments to lambda works with simple-check.
-;Base case: The lambda is malformed, we return false.
-;Induction step: Assuming simple-check works for the cond cells, all we must do is verify the structure of the cond statement.
-
-(define (lambda? exp) (eq? 'lambda (car exp)))
-
-; non-primitive-function? - Checks for lambda format and returns a boolean.
-(define (non-primitive-function? exp)
-  (cond ( (not (list? (car exp))) #f)
-        ( (not (equal? 3 (length (car exp)))) #f)
-        ( else (lambda? (car exp)))))
+; lambda? - Checks for lambda format and returns a boolean.
+(define (lambda? lambda)
+  (cond ( (not (list? lambda)) #f)
+        ( (not (equal? 3 (length lambda))) #f)
+        ( else (eq? 'lambda (car lambda)))))
 
 ; safe-length - Returns 1 for atoms, sizes lists.
 (define (safe-length s) (if (atom? s) 1 (length s)))
@@ -716,7 +702,9 @@
 ; Note that a dummy value of #t is used. The main purpose of the syntax checker is to check syntax,
 ; not to evaluate. Therefore a dummy value is sufficient for this purpose.
 (define (formals-entries formals)
-  (new-entry formals (generate-list #t (safe-length formals))))
+  (if (atom? formals)
+      (new-entry (list formals) (generate-list #t (safe-length formals)))
+      (new-entry formals (generate-list #t (safe-length formals)))))
 
 ; generate-list - Takes an element and a size, and returns a list of length size.
 ; recursive function. termination: when size is equal to 0.
@@ -728,10 +716,23 @@
       (cons element (generate-list element (- size 1)))
       '()))
 
+; check-lambda - Returns true if this is a proper lambda.
+(define (check-lambda lambda table)
+  (let ((formals (second lambda))
+        (body (third lambda)))
+    (and
+     (check-formals formals)
+     (simple-check body (add-formals-to-table formals table)) ; This line adds the lambda variables to the table.
+     )))
 
 
-; check-non-primitive-function - Returns true if this is a proper lambda.
-(define (check-non-primitive-function exp table)
+
+
+; non-primitive-function? - Checks for applied lambda format and returns a boolean.
+(define (applied-lambda? exp) (lambda? (car exp)))
+
+; check-non-primitive-function - Returns true if this is a proper applied lambda.
+(define (check-applied-lambda exp table)
   (let ((lambda (car exp))
         (formals (second (car exp)))
         (body (third (car exp))))
@@ -750,6 +751,8 @@
 ;(define q '((lambda x 5) 2))
 ;(define q '((lambda () (sub1 3))))
 ;(define q '((lambda (x) (sub1 x)) 2))
+;(define q '((lambda x (sub1 5)) 2))
+;(define q '((lambda x (sub1 x)) 2) )
 
 ;(value q)
 ;(car q)                                     ; lambda
@@ -760,7 +763,7 @@
 ;(simple-check (third (car q))
 ;              (add-formals-to-table (second (car q)) '()))
 ;(formals-match-arguments q)
-;(check-non-primitive-function q '())
+;(check-applied-lambda q '())
 
 
 ; Note that this properly checks for closures!!!
@@ -782,7 +785,8 @@
         ( (atom? exp) (check-identifier exp table))
         ( (quote? exp) (check-quote exp))
         ( (cond? exp) (check-cond exp table))
-        ( (non-primitive-function? exp) (check-non-primitive-function exp table))
+        ( (lambda? exp) (check-lambda exp table))
+        ( (applied-lambda? exp) (check-applied-lambda exp table))
         ( else (and (primitive-function? exp) (check-function-args (cdr exp) table)))))
 
 
@@ -791,17 +795,24 @@
 
 
 ; TESTS
-(check '((lambda x 10) 5))
-(check '((lambda (x) (add1 x)) 5))
-(check '((lambda (x y) (cons x y)) 3 (quote a)))
-(check '((lambda (z) ((lambda (x y) (cons x y)) 3 (quote a))) (quote 15)))
+; pass
+
+; pass
+;(check '(lambda x 10))
+;(check '(lambda (x) (add1 x)))
+;(check '(lambda (x y) (cons x y)))
+;(check '(lambda (z) ((lambda (x y) (cons x y)) 3 (quote a))))
+
+;(check '((lambda x 10) 5))
+;(check '((lambda (x) (add1 x)) 5))
+;(check '((lambda (x y) (cons x y)) 3 (quote a)))
+;(check '((lambda (z) ((lambda (x y) (cons x y)) 3 (quote a))) (quote 15)))
 
 ; fail
-(check '())                ; null is not an expression.
-(check '(add2 7))          ; add2 is not a function.
-(check '(add1 (sub1 0 0))) ; sub1 is arity-1.
-(check '(eq? (sub1 0)))    ; eq? is arity-2.
-
+;(check '())                ; null is not an expression.
+;(check '(add2 7))          ; add2 is not a function.
+;(check '(add1 (sub1 0 0))) ; sub1 is arity-1.
+;(check '(eq? (sub1 0)))    ; eq? is arity-2.
 
 
 
