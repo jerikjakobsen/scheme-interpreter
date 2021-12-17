@@ -34,7 +34,7 @@
 
 
 ; environments implemented as tables
-
+ 
 
 (define lookup-in-table
   (lambda (name table table-f)
