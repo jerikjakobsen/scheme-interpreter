@@ -518,15 +518,15 @@
          ( else (cond-check-helper (cdr exp)))))
 
 ; cond-check-helper - Takes a list and returns a boolean.
+; A cond cell is a list with the first element the question and the second element the answer
 ; idea: A cond statement has multiple cells. Every cond cell has two arguments.
 ; check if the car of the list is a list. Make sure its length is 2.
-
+; Pre-Condition: There is at least one cond cell
+; Post-Condition returns true if all cond cells are in proper form
 ; Recursively cdr down the list. This is a weak induction over the length of the list.
-; base case is the first cond cell.
-; termination argument - null list. Returns true.
+; base case is the if the list is null
+; termination argument - The list is finite and will eventually become null through cdring through the whole list
 ; Results are preserved using and.
-; strong-enough? list is truncated via cdr.
-; weak-enough? returns #t when null, so the value of and will not change.
 
 ; Call simple-check on the two elements of the cond cell to verify those as well.
 (define (cond-check-helper lst)
@@ -537,9 +537,11 @@
                 (simple-check (car (car lst)))
                 (simple-check (car (cdr (car lst))))
                 (cond-check-helper (cdr lst))
-                )
                )
-        ))
+        )
+ ))
+
+Structural Induction For Checking cond
 
 (define (simple-check exp)
   (cond ( (null? exp) #f)
@@ -567,9 +569,32 @@
 
 ; check-identifier - Takes a name and a table, and returns a boolean.
 (define (check-identifier name table)
-  (let ((result (lookup-in-table name table
-                                 (lambda (name) #f))))
-    (if (equal? #f result) #f #t)))
+  (check-table table name))
+
+(define (check-table table name)
+  (cond ( (null? table) #f)
+        ( (check-entry (names (car table)) name) #t)
+        ( else (check-table (cdr table) name))))
+;Proof
+;
+;Idea: Cdr down the table and check each entry for the value inquired, if the value is in an entry return true, otherwise
+;keep looking in the other entries
+;
+;Proof by induction on the length of the table
+;Assume check-table works for tables of size k-1, where k is the number of entries in table.
+;Base case: When the table is null the value is definitely not in the table, so we return false.
+;Induction Step:
+;To get check-table of table where it is of size k, we can check if the entry contains the value, if it does we can return true, if it doesnt,
+;then since (check-table (cdr table) name) returns the correct answer, we can return that.
+;Termination Argument:
+;Since k is an integer, and we are decrementing it finitely, we will eventually hit 0 the base case.
+
+(define (check-entry entry-names name)
+  (cond ( (null? entry-names) #f)
+        ( (eq? (car entry-names) name) #t)
+        ( else (check-entry (cdr entry-names) name))))
+;The proof is similar to above, instead of cdring down the table, we are cdring down the names of the entry and returning true
+;if the car of the names of the entry is equal to the provided name, and false if the entry is null.
 
 
 ; CHANGE simple-check TO ACCEPT A TABLE OF IDENTIFIERS.
@@ -588,9 +613,9 @@
                 (simple-check (car (car lst)) table)
                 (simple-check (car (cdr (car lst))) table)
                 (cond-check-helper (cdr lst) table)
-                )
                )
-        ))
+        )
+ ))
 
 
 (define (simple-check exp table)
@@ -606,9 +631,12 @@
 
 (define table-test
   (extend-table (new-entry '(appetizer entree beverage) '(pate boeuf vin))
-                (extend-table (new-entry '(beverage dessert) '((food is) (number one with us)))
-                              '())))
+   (extend-table (new-entry '(beverage dessert) '((food is) (number one with us)))
+                 '())))
 
+
+;(check-entry (names (car table-test)) 'b)
+;(check-table table-test 'entree)
 ;(meaning 'appetizer table-test)
 ;(check-identifier 'appetizer table-test)
 ;(check-identifier 'no table-test)
@@ -641,10 +669,10 @@
 ; idea: to verify the correctness, check for the length of a lambda expression = 3.
 ; Match the number of formal arguments to number of applied arguments.
 ; Add the formals to the environment, and pass the new-table to simple-check.
+; Check the arguments for proper tls form
 
 ; Because a lambda can also be of the form ((lambda x 5) 7)
 ; We must accept atoms as well as lists.
-
 
 (define (lambda? exp) (eq? 'lambda (car exp)))
 
@@ -660,9 +688,9 @@
 ; check-formals - Use an and-map to ensure the formals are atoms and not numbers.
 (define (check-formals formals)
   (let ((atom-or-number? (lambda (x) (and (atom? x) (not (number? x))))))
-    (if (atom? formals)
-        (atom-or-number? formals)
-        (and-map formals atom-or-number?))))
+  (if (atom? formals)
+      (atom-or-number? formals)
+      (and-map formals atom-or-number?))))
 
 ; formals-match-arguments - Checks if the # of lambda arguments matches the # of applied arguments.
 (define (formals-match-arguments exp)
@@ -699,6 +727,7 @@
      (check-formals formals)
      (formals-match-arguments exp)
      (simple-check body (add-formals-to-table formals table)) ; This line adds the lambda variables to the table.
+     (check-function-args (cdr exp) table)
      )))
 
 
@@ -750,18 +779,16 @@
 
 
 ; TESTS
-; pass
-;(check '((lambda x 10) 5))
-;(check '((lambda (x) (add1 x)) 5))
-;(check '((lambda (x y) (cons x y)) 3 (quote a)))
-;(check '((lambda (z) ((lambda (x y) (cons x y)) 3 (quote a))) (quote 15)))
+(check '((lambda x 10) 5))
+(check '((lambda (x) (add1 x)) 5))
+(check '((lambda (x y) (cons x y)) 3 (quote a)))
+(check '((lambda (z) ((lambda (x y) (cons x y)) 3 (quote a))) (quote 15)))
 
 ; fail
-;(check '())                ; null is not an expression.
-;(check '(add2 7))          ; add2 is not a function.
-;(check '(add1 (sub1 0 0))) ; sub1 is arity-1.
-;(check '(eq? (sub1 0)))    ; eq? is arity-2.
-
+(check '())                ; null is not an expression.
+(check '(add2 7))          ; add2 is not a function.
+(check '(add1 (sub1 0 0))) ; sub1 is arity-1.
+(check '(eq? (sub1 0)))    ; eq? is arity-2.
 
 
 
