@@ -355,6 +355,12 @@
 (value '(cond ((zero? (square 5)) (square 2)) (else (square 4))))
 
 
+(define (power x) (* x x))
+
+
+(cond ((zero? (power 5)) (power 2)) (else (power 4)))
+
+
 
 
 
