@@ -321,19 +321,23 @@
 
 ; Two functions are modified - atom-to-action and myapply-primitive.
 ; my-apply primitive receives the name of the atom from a primitive of the form ('primitive 'square).
-; This is a structural induction on the type of the list, which is a defined to be a primitive.
 
 ; The construction of ('primitive 'square) comes from atom-to-action. It returns the first class function *const,
 ; and *const is applied to (square vals).
 
+Structural Induction
+
+Induction Hypothesis
+1) Assume that for all sub-components of cond, that is the question and answer pairs, meaning works correctly
+   for square.
+2) Assume that for all sub-components of lambda, that is the body, meaning works correctly
+   for square.
+3) Assume for all sub-components of a primitive function, that is it's arguments, meaning works correctly for square.
+
+
 
 ; TESTS
 (value '(square 7))
-
-
-
-
-
 
 
 

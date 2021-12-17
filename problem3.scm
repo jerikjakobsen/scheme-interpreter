@@ -541,7 +541,12 @@
         )
  ))
 
-Structural Induction For Checking cond
+;Structural Induction For Checking cond
+;
+;Assume the simple-check works for the sub-components of cond, that is the question and answer parts of the cond cell works with simple-check.
+;Base case: there are no cond cells, so we return false since cond requires at least one cond cell.
+;Induction step: Assuming simple-check works for the cond cells, all we must do is verify the structure of the cond statement.
+
 
 (define (simple-check exp)
   (cond ( (null? exp) #f)
@@ -593,6 +598,7 @@ Structural Induction For Checking cond
   (cond ( (null? entry-names) #f)
         ( (eq? (car entry-names) name) #t)
         ( else (check-entry (cdr entry-names) name))))
+
 ;The proof is similar to above, instead of cdring down the table, we are cdring down the names of the entry and returning true
 ;if the car of the names of the entry is equal to the provided name, and false if the entry is null.
 
@@ -673,6 +679,12 @@ Structural Induction For Checking cond
 
 ; Because a lambda can also be of the form ((lambda x 5) 7)
 ; We must accept atoms as well as lists.
+
+;Structural Induction For checking lambda
+;
+;Assume the simple-check works for the sub-components of lambda, that is the body and arguments to lambda works with simple-check.
+;Base case: The lambda is malformed, we return false.
+;Induction step: Assuming simple-check works for the cond cells, all we must do is verify the structure of the cond statement.
 
 (define (lambda? exp) (eq? 'lambda (car exp)))
 
