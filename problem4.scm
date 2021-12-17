@@ -1,4 +1,5 @@
-;4.   Add let to TLS, and prove that the resulting interpreter (for the language TLS-let, that is, TLS with let) is correct.
+; Problem 4
+; Edison Hua and John Jakobsen
 
 ; CSc 335
 ; first scheme interpreter
@@ -51,12 +52,7 @@
 
 (define extend-table cons)
 
-(names values)
-( (name value) (name value) ... )
-(define let-to-names
-  (lambda (let-formals)
-    (
-                       
+
 
 (define lookup-in-entry
   (lambda (name entry entry-f)
@@ -129,7 +125,6 @@
       ((eq? e (quote add1)) *const)
       ((eq? e (quote mul)) *const)
       ((eq? e (quote sub1)) *const)
-      ((eq? e (quote square)) *const)
       ((eq? e (quote number?)) *const)
       (else *identifier))))
 
@@ -145,7 +140,6 @@
           *lambda)
          ((eq? (car e) (quote cond))
           *cond)
-         ( (eq? (car e) (quote let)) *let) ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;;
          (else *application)))
       (else *application))))
 
@@ -187,15 +181,6 @@
   (lambda (e table)
     (build (quote non-primitive)
            (cons table (cdr e)))))
-('non-primitive (table formals body))
-(let ( (x 5) (y 6)) (body))
-
-(define (update-table-from-let
-
-              
-(define *let
-  (lambda (e table)
-    (build (quote let-primitive) 
 
 (define table-of first)
 
@@ -307,14 +292,11 @@
       ((eq? name (quote mul))
        (* (first vals) (second vals)))
       ((eq? name (quote sub1))
-       (- (first vals) 1))
-      ((eq? name (quote square))
-       (* (first vals) (first vals)))   
+       (sub1 (first vals)))
+;;;; deliberate error: ask class to figure out how to repair it.  
+      
       ((eq? name (quote number?))
        (number? (first vals))))))
-
-(define myapply-let (lambda (table body)
-                      (
 
 
 (define :atom?
@@ -326,7 +308,6 @@
        #t)
       ((eq? (car x) (quote non-primitive))
        #t)
-      ( (eq? (car x) (quote let-primitive)) #t)
       (else #f))))
 
 (define myapply-closure
@@ -339,4 +320,82 @@
               (table-of closure)))))
 
 
-(let ( (x 5) ) (+ 1 x))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;pre processor for let
+
+(define list-to-action
+  (lambda (e)
+    (cond
+      ((atom? (car e))
+       (cond 
+         ((eq? (car e) (quote quote))
+          *quote)
+         ((eq? (car e) (quote lambda))
+          *lambda)
+         ((eq? (car e) (quote cond))
+          *cond)
+         ((eq? (car e) (quote let))
+          *let)
+         (else *application)))
+      (else *application))))
+
+(define (*let e table)
+  (myapply
+   (meaning
+    (list 'lambda (let-formals-to-names (second e)) (third e))
+    table)
+   (evlis
+    (let-formals-to-values (second e))
+    table)
+   )
+  )
+
+; let-formals-to-names - Takes a list of let-formals and returns a list of names.
+(define (let-formals-to-names formals)
+  (map (lambda (x) (first x)) formals))
+
+; let-formals-to-values - Takes a list of let-formals and returns a list of values.
+(define (let-formals-to-values formals)
+  (map (lambda (x) (second x)) formals))
+
+; TESTS
+(value '(let ((x 5)) (add1 x)))
+(value '(let ( (x 5) (y 4)) (cond (else (add1 x)))))
+(value '(cond ((zero? (add1 ((lambda (x) (add1 x)) -2))) ((lambda (x) ((lambda (y) (add1 y)) x)) 5))))
+
+(value '((lambda (x) ((lambda (y) (add1 y)) x)) 5)) ; lambda (lambda)
+(value '((lambda (x) (let ((y x)) (add1 y))) 5))    ; lambda (let)
+(value '(let ((x 5)) ((lambda (y) (add1 y)) x)))    ; let (lambda)
+(value '(let ((x 5)) (let ((y x)) (add1 y))))       ; let (let)
+
