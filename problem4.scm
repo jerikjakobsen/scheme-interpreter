@@ -1,4 +1,4 @@
-4.   Add let to TLS, and prove that the resulting interpreter (for the language TLS-let, that is, TLS with let) is correct.
+;4.   Add let to TLS, and prove that the resulting interpreter (for the language TLS-let, that is, TLS with let) is correct.
 
 ; CSc 335
 ; first scheme interpreter
