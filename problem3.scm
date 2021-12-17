@@ -541,7 +541,11 @@
         )
  ))
 
-; Structural Induction For Checking cond
+;Structural Induction For Checking cond
+;
+;Assume the simple-check works for the sub-components of cond, that is the question and answer parts of the cond cell works with simple-check.
+;Base case: there are no cond cells, so we return false since cond requires at least one cond cell.
+;Induction step: Assuming simple-check works for the cond cells, all we must do is verify the structure of the cond statement.
 
 (define (simple-check exp)
   (cond ( (null? exp) #f)
@@ -673,6 +677,12 @@
 
 ; Because a lambda can also be of the form ((lambda x 5) 7)
 ; We must accept atoms as well as lists.
+
+;Structural Induction For checking lambda
+;
+;Assume the simple-check works for the sub-components of lambda, that is the body and arguments to lambda works with simple-check.
+;Base case: The lambda is malformed, we return false.
+;Induction step: Assuming simple-check works for the cond cells, all we must do is verify the structure of the cond statement.
 
 ; lambda? - Checks for lambda format and returns a boolean.
 (define (lambda? lambda)
