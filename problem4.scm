@@ -51,7 +51,12 @@
 
 (define extend-table cons)
 
-
+(names values)
+( (name value) (name value) ... )
+(define let-to-names
+  (lambda (let-formals)
+    (
+                       
 
 (define lookup-in-entry
   (lambda (name entry entry-f)
@@ -182,6 +187,15 @@
   (lambda (e table)
     (build (quote non-primitive)
            (cons table (cdr e)))))
+('non-primitive (table formals body))
+(let ( (x 5) (y 6)) (body))
+
+(define (update-table-from-let
+
+              
+(define *let
+  (lambda (e table)
+    (build (quote let-primitive) 
 
 (define table-of first)
 
@@ -299,6 +313,9 @@
       ((eq? name (quote number?))
        (number? (first vals))))))
 
+(define myapply-let (lambda (table body)
+                      (
+
 
 (define :atom?
   (lambda (x)
@@ -309,6 +326,7 @@
        #t)
       ((eq? (car x) (quote non-primitive))
        #t)
+      ( (eq? (car x) (quote let-primitive)) #t)
       (else #f))))
 
 (define myapply-closure
@@ -320,11 +338,5 @@
                vals)
               (table-of closure)))))
 
-(define (*let e table)
-  (myapply
 
-
- (let ( (x 5) ) (+ 1 x))
-
-
-
+(let ( (x 5) ) (+ 1 x))

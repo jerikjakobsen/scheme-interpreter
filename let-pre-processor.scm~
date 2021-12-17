@@ -1,0 +1,17 @@
+;pre processor for let
+(define (expression-to-action-replacer exp)
+  (cond ( (atom? exp) const-replacer)
+        ( else (list-to-action-replacer exp))))
+
+(define (const-replacer exp) exp)
+
+(define (list-to-action-checker exp)
+  (cond ( (eq? 'cond (car exp)) cond-replacer)
+        ( (eq? 'let (car exp)) let-replacer)
+        ( (eq? 'quote) const-replacer)
+        ( (list? (car exp)) non-primitive-replacer)
+        ( else primitive-replacer)))
+
+(define (cond-replacer exp)
+  (map (cdr exp)
+        
