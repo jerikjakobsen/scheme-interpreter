@@ -325,28 +325,40 @@
 ; The construction of ('primitive 'square) comes from atom-to-action. It returns the first class function *const,
 ; and *const is applied to (square vals).
 
-Structural Induction
+;Structural Induction
+;
+;Induction Hypothesis
+;1) Assume that for all sub-components of cond, that is the question and answer pairs, square is evaluated correctly.
+;2) Assume that for all sub-components of lambda, that is the body, square is evaluated correctly.
+;3) Assume for all sub-components of an application, that is it's arguments, square is evaluated correctly.
+;
+;
+;Base Case:
+;square is correctly evaluated for each occurrence of square in a number or boolean, since there can be no occurrence of square in either.
+;
+;Inductive Step
+;1) if square is evaluated correctly in all sub-components of cond (by our induction hypothesis 1), then since the only place
+;square can appear is in the sub-components of the cond, square is evaluated correctly.
+;2) if square is evaluated correctly in all sub-components of lambda (by our induction hypothesis 2), then since the only place
+;square can appear is in the sub-components of the lambda (body), square is evaluated correctly.
+;3) if square is evaluated correctly in all sub-components of application (by our induction hypothesis 3), then since the only place
+;square can appear is in the arguments of the application, which are sub components of the expression, so squareis evaluated correctly.
 
-Induction Hypothesis
-1) Assume that for all sub-components of cond, that is the question and answer pairs, meaning works correctly
-   for square.
-2) Assume that for all sub-components of lambda, that is the body, meaning works correctly
-   for square.
-3) Assume for all sub-components of a primitive function, that is it's arguments, meaning works correctly for square.
-
-
+;All thats left to do is show that tls evaluates square to be an application,
+;in the atom-to-action function, square is evaluated to *const, which is then evaluated to *application, which is then evaluated to '(primitive square),
+;which is then evaluated to the correct function via my-apply-primitive, and since the arguments of of an application are correctly evaluated,
+;square is evaluated correctly.
 
 ; TESTS
 (value '(square 7))
+(value '((lambda (x) (square x)) 2) )
+(value '(cond ((zero? (square 5)) (square 2)) (else (square 4))))
 
 
+(define (power x) (* x x))
 
 
-
-
-
-
-
+(cond ((zero? (power 5)) (power 2)) (else (power 4)))
 
 
 
