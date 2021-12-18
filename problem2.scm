@@ -430,7 +430,6 @@
 ; cdr to get the value.
 
 ; We use map and apply the function car, and another map to apply the function cdr.
-; This is a weak induction on the length of the list.
 ; In this case, both car and cdr turn a list [e] -> e into an atom.
 ; Because the outer list is preserved by the map function, we can safely say that map returns a list.
 
