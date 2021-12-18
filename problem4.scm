@@ -1,4 +1,5 @@
-;4.   Add let to TLS, and prove that the resulting interpreter (for the language TLS-let, that is, TLS with let) is correct.
+; Problem 4
+; Edison Hua and John Jakobsen
 
 ; CSc 335
 ; first scheme interpreter
@@ -51,12 +52,7 @@
 
 (define extend-table cons)
 
-(names values)
-( (name value) (name value) ... )
-(define let-to-names
-  (lambda (let-formals)
-    (
-                       
+
 
 (define lookup-in-entry
   (lambda (name entry entry-f)
@@ -129,7 +125,6 @@
       ((eq? e (quote add1)) *const)
       ((eq? e (quote mul)) *const)
       ((eq? e (quote sub1)) *const)
-      ((eq? e (quote square)) *const)
       ((eq? e (quote number?)) *const)
       (else *identifier))))
 
@@ -145,7 +140,6 @@
           *lambda)
          ((eq? (car e) (quote cond))
           *cond)
-         ( (eq? (car e) (quote let)) *let) ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;;
          (else *application)))
       (else *application))))
 
@@ -187,15 +181,6 @@
   (lambda (e table)
     (build (quote non-primitive)
            (cons table (cdr e)))))
-('non-primitive (table formals body))
-(let ( (x 5) (y 6)) (body))
-
-(define (update-table-from-let
-
-              
-(define *let
-  (lambda (e table)
-    (build (quote let-primitive) 
 
 (define table-of first)
 
@@ -308,13 +293,8 @@
        (* (first vals) (second vals)))
       ((eq? name (quote sub1))
        (- (first vals) 1))
-      ((eq? name (quote square))
-       (* (first vals) (first vals)))   
       ((eq? name (quote number?))
        (number? (first vals))))))
-
-(define myapply-let (lambda (table body)
-                      (
 
 
 (define :atom?
@@ -326,7 +306,6 @@
        #t)
       ((eq? (car x) (quote non-primitive))
        #t)
-      ( (eq? (car x) (quote let-primitive)) #t)
       (else #f))))
 
 (define myapply-closure
@@ -339,4 +318,125 @@
               (table-of closure)))))
 
 
-(let ( (x 5) ) (+ 1 x))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+; DESIGN IDEA: The goal is to write a pre-processor for let that transforms a let-expression into a lambda-expression.
+; We noticed that a let-expression is similar to a lambda-expression.
+
+; (let ((x 1) (y 2)) (eq? x y))
+; ((lambda (x y) (eq? x y)) 1 2)
+
+; let-formals = ((x 1) (y 2))
+; There are 3 changes:
+; 1. The lambda parameters are the names of the let-formals.
+; 2. The applied arguments of the lambda are the values of the let-formals.
+; 3. let becomes lambda.
+; The body of the expressions remain unchanged.
+
+; Therefore we conceive of 2 helper functions:
+; One to collect the names of a map.
+; Another to collect the values of the map.
+
+; For every pair of (name value) inside a list, we can apply car to get the name,
+; and cadr to get the value.
+
+; We use map and apply the function "first" and another map to apply the function "second".
+; This is a weak induction on the length of the list.
+
+; let-formals-to-names - Takes a list of (name values) and returns a list of names.
+(define (let-formals-to-names formals)
+  (map (lambda (x) (first x)) formals))
+
+; let-formals-to-values - Takes a list of (name values) and returns a list of values.
+(define (let-formals-to-values formals)
+  (map (lambda (x) (second x)) formals))
+
+
+; *application is used as a template, because we are creating an applied-lambda in the form ((lambda) args*).
+; In the *application function, the lambda is passed to meaning,
+; and the args* is passed to evlis.
+
+; 
+; We build a lambda using a list function.
+;   1. 'lambda - the word lambda denotes this is a lambda expression.
+;   2. The result of let-formals-to-names is a list of names.
+;   3. The body of the expression in a let-expression is unchanged in a lambda-expression.
+; The result of let-formals-to-values is the list of args.
+
+
+; *let - Evaluates an expression with a table and returns the result. 
+(define (*let e table)
+  (myapply
+   (meaning
+    (list 'lambda (let-formals-to-names (second e)) (third e))
+    table)
+   (evlis
+    (let-formals-to-values (second e))
+    table)
+   )
+  )
+
+
+; list-to-action is updated with *let. Its position does not matter inside the cond statement.
+; list-to-action - Checks the expression and returns a function that can be used to evaluate the expression.
+(define list-to-action
+  (lambda (e)
+    (cond
+      ((atom? (car e))
+       (cond 
+         ((eq? (car e) (quote quote))
+          *quote)
+         ((eq? (car e) (quote lambda))
+          *lambda)
+         ((eq? (car e) (quote cond))
+          *cond)
+         ((eq? (car e) (quote let))
+          *let)
+         (else *application)))
+      (else *application))))
+
+
+
+
+
+; TESTS
+(value '(let ((x 5)) (add1 x)))
+(value '(let ( (x 5) (y 4)) (cond (else (add1 x)))))
+(value '(cond ((zero? (add1 ((lambda (x) (add1 x)) -2))) ((lambda (x) ((lambda (y) (add1 y)) x)) 5))))
+
+; We provide some tests showing how lambda can be mixed with let.
+(value '((lambda (x) ((lambda (y) (add1 y)) x)) 5)) ; lambda (lambda)
+(value '((lambda (x) (let ((y x)) (add1 y))) 5))    ; lambda (let)
+(value '(let ((x 5)) ((lambda (y) (add1 y)) x)))    ; let (lambda)
+(value '(let ((x 5)) (let ((y x)) (add1 y))))       ; let (let)
+
