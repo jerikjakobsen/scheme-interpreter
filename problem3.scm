@@ -744,10 +744,10 @@
 
 
 
-; non-primitive-function? - Checks for applied lambda format and returns a boolean.
+; applied-lambda? - Checks for applied lambda format and returns a boolean.
 (define (applied-lambda? exp) (lambda? (car exp)))
 
-; check-non-primitive-function - Returns true if this is a proper applied lambda.
+; check-applied-lambda - Returns true if this is a proper applied lambda.
 (define (check-applied-lambda exp table)
   (let ((lambda (car exp))
         (formals (second (car exp)))
