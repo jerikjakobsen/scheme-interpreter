@@ -361,7 +361,7 @@
 ; 1. The lambda parameters are the names of the let-formals.
 ; 2. The applied arguments of the lambda are the values of the let-formals.
 ; 3. let becomes lambda.
-; The body of the expressions remain unchanged.
+; The body of the expressions remain preserved, until transformed to the corresponding lambda expression in subsequent calls to *let.
 
 ; Therefore we conceive of 2 helper functions:
 ; One to collect the names of a map.
@@ -425,6 +425,15 @@
          (else *application)))
       (else *application))))
 
+;Assuming that the interpreter properly interprets a lambda expression, that is meaning of a lambda expression is properly evalauated
+;if we correctly transform a let expression into its corresponding lambda expression as stated above, then let should be evaluated correctly by the interpreter.
+;The interpreter evaluates a let expression by evaluating ( (expression-to-action exp) exp table) which is turned into (*let exp table) which is when the let-expression
+;is transformed into the corresponding lambda expression, which is shown to be correct above. So by structural induction, we can prove that the let-interpreter works properly.
+;Our Induction hypothesis is that let is evaluated correctly in the arguments and body of the corrresponding lambda expression. Our base case would be when the interpreter is
+;supplied with a number, or a boolean, inn which case the interpreter works by returning those values. The induction step, since our transformation from the let form to the
+;corresponding lambda form is correct and by our induction hypothesis the body and arguments of the lambda expression are interpreted correctly, this means that the interpreter
+;properly interpret the let expression. This is shown in the *let function, since our induction hypothesis is that the interpreter properly evaluates sub-expressions, meaning should work for
+;the corresponding lambda expression, Similarly evlist also works correctly for the applied arguments of the lambda expression by our induction hypothesis.
 
 
 
